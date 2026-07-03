@@ -11,4 +11,5 @@ dist/
 
 .playwright-cli/
 .hydrocli.toml
+AGENTS.md
 problems/
