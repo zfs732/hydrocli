@@ -30,3 +30,32 @@ def test_config_set_url_keeps_current_contest_when_url_unchanged(monkeypatch, tm
     assert result.exit_code == 0
     assert store.load().base_url == "http://localhost:8888"
     assert store.load().current_contest_id == "abc123"
+
+
+def test_config_strict_submit_toggles_output_mode(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HYDRO_CLI_CONFIG_DIR", str(tmp_path))
+    store = ConfigStore()
+    store.save(Config(base_url="http://localhost:8888"))
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["config", "strict-submit", "on"])
+
+    assert result.exit_code == 0
+    assert store.load().strict_submit
+
+    result = runner.invoke(app, ["config", "strict-submit", "off"])
+
+    assert result.exit_code == 0
+    assert not store.load().strict_submit
+
+
+def test_config_show_displays_strict_submit(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HYDRO_CLI_CONFIG_DIR", str(tmp_path))
+    ConfigStore().save(Config(base_url="http://localhost:8888", strict_submit=True))
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["config", "show"])
+
+    assert result.exit_code == 0
+    assert "strict_submit" in result.stdout
+    assert "on" in result.stdout

@@ -44,6 +44,7 @@ See [docs/install.md](docs/install.md) for user install options and
 
 ```bash
 hydro config set-url https://hydro.example.com
+hydro config strict-submit on
 hydro login <username>
 hydro whoami
 hydro problem show 18
@@ -108,3 +109,7 @@ Contest support follows the Hydro v5 routes observed on the local instance:
 - contest standings: `/contest/<cid>/scoreboard` when the contest rule makes it visible
 
 Run `hydro contest use <cid>` to save a current contest in the local config. Contest commands still accept an explicit `<cid>`, but `show`, `problems`, `standings`, `record`, and the short submit forms `hydro contest submit A main.cpp` and `hydro contest submit-answer A answer.zip` use the saved contest when it is omitted.
+
+Run `hydro config strict-submit on` to hide per-test judge messages in record
+details and watched submissions. In strict mode, case rows show the normalized
+status such as `Accepted`, `Wrong Answer`, `OLE`, or `ILE` without SPJ hint text.

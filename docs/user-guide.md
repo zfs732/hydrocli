@@ -59,6 +59,18 @@ Check current configuration at any time:
 hydro config show
 ```
 
+If you want submission watches and record details to hide per-test judge messages, enable strict submit output:
+
+```bash
+hydro config strict-submit on
+```
+
+Turn it off with:
+
+```bash
+hydro config strict-submit off
+```
+
 If you switch to another Hydro site with `hydro config set-url`, the saved current contest is cleared so you do not accidentally submit to a contest from a different site.
 
 ## Updating
@@ -315,6 +327,8 @@ hydro record watch <rid>
 ```
 
 Record output groups final test details by subtask and collapses accepted subtasks so the important failures stay visible.
+
+With `hydro config strict-submit on`, per-test SPJ or checker messages are hidden in `record show`, `record watch`, and watched submit commands. Case rows keep the normalized status, such as `Accepted`, `Wrong Answer`, `OLE`, or `ILE`, without text like checker hints or score explanations. Unknown statuses are left unchanged instead of being removed.
 
 Some contest rules hide standings or record details while the contest is running. In that case the CLI reports the Hydro permission error instead of inventing a local result.
 

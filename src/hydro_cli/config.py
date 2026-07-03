@@ -37,6 +37,7 @@ class Config:
     base_url: str = "http://localhost:8888"
     default_language: str = ""
     current_contest_id: str = ""
+    strict_submit: bool = False
     username: str = ""
     uid: str = ""
     cookies: list[CookieRecord] = field(default_factory=list)
@@ -52,6 +53,7 @@ class Config:
             base_url=normalize_base_url(str(data.get("base_url") or "http://localhost:8888")),
             default_language=str(data.get("default_language") or ""),
             current_contest_id=str(data.get("current_contest_id") or ""),
+            strict_submit=_bool_from_config(data.get("strict_submit")),
             username=str(data.get("username") or ""),
             uid=str(data.get("uid") or ""),
             cookies=cookies,
@@ -65,6 +67,14 @@ class Config:
     @property
     def is_logged_in(self) -> bool:
         return any(cookie.name == "sid" and cookie.value for cookie in self.cookies)
+
+
+def _bool_from_config(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in {"1", "true", "yes", "on"}
+    return bool(value)
 
 
 class ConfigStore:

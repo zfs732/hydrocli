@@ -9,6 +9,7 @@ def test_config_roundtrip(tmp_path) -> None:
     config = Config(
         base_url="localhost:8888/",
         current_contest_id="abc123",
+        strict_submit=True,
         username="alice",
         uid="3",
         cookies=[CookieRecord(name="sid", value="abc")],
@@ -19,6 +20,7 @@ def test_config_roundtrip(tmp_path) -> None:
 
     assert loaded.base_url == "http://localhost:8888"
     assert loaded.current_contest_id == "abc123"
+    assert loaded.strict_submit
     assert loaded.username == "alice"
     assert loaded.uid == "3"
     assert loaded.is_logged_in
@@ -32,3 +34,4 @@ def test_config_loads_old_file_without_current_contest(tmp_path) -> None:
 
     assert loaded.base_url == "http://localhost:8888"
     assert loaded.current_contest_id == ""
+    assert not loaded.strict_submit

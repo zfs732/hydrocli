@@ -22,7 +22,7 @@ from .config import Config, ConfigStore
 from .contest import ContestDetail, ContestProblem, ContestService, ContestStanding
 from .errors import HydroCliError, HydroRequestError
 from .problem import ProblemService, render_statement
-from .record import RecordDetail, RecordService, RecordSummary
+from .record import RUNNING_STATUS_HINTS, TERMINAL_STATUS_HINTS, RecordDetail, RecordService, RecordSummary
 from .submit import SubmitService
 from .utils import normalize_base_url
 
@@ -117,10 +117,22 @@ def config_show() -> None:
     table.add_row("base_url", config.base_url)
     table.add_row("default_language", config.default_language or "-")
     table.add_row("current_contest_id", config.current_contest_id or "-")
+    table.add_row("strict_submit", "on" if config.strict_submit else "off")
     table.add_row("username", config.username or "-")
     table.add_row("uid", config.uid or "-")
     table.add_row("session", "present" if config.is_logged_in else "-")
     console.print(table)
+
+
+@config_app.command("strict-submit")
+def config_strict_submit(
+    mode: Annotated[str, typer.Argument(help="Enable or disable strict submit output: on/off")],
+) -> None:
+    store = _store()
+    config = store.load()
+    config.strict_submit = _parse_on_off(mode)
+    store.save(config)
+    console.print(f"Strict submit output set to [bold]{'on' if config.strict_submit else 'off'}[/bold]")
 
 
 @app.command()
@@ -504,13 +516,14 @@ def submit(
 ) -> None:
     if not source.exists():
         raise HydroCliError(f"source file not found: {source}")
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
         rid = SubmitService(client).submit(pid, source, lang)
         console.print(f"Submitted [bold]{pid}[/bold] -> [bold]{rid}[/bold]")
         if watch:
-            detail = _watch_record(client, rid)
-            _print_record_detail(detail)
+            detail = _watch_record(client, rid, strict=config.strict_submit)
+            _print_record_detail(detail, strict=config.strict_submit)
         else:
             console.print(f"Use [bold]hydro record watch {rid}[/bold] to wait for the result.")
 
@@ -525,13 +538,14 @@ def submit_answer(
         raise HydroCliError(f"answer file not found: {answer}")
     if answer.suffix.lower() != ".zip":
         raise HydroCliError("answer file must be a .zip file")
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
         rid = SubmitService(client).submit_answer(pid, answer)
         console.print(f"Submitted answer [bold]{pid}[/bold] -> [bold]{rid}[/bold]")
         if watch:
-            detail = _watch_record(client, rid)
-            _print_record_detail(detail)
+            detail = _watch_record(client, rid, strict=config.strict_submit)
+            _print_record_detail(detail, strict=config.strict_submit)
         else:
             console.print(f"Use [bold]hydro record watch {rid}[/bold] to wait for the result.")
 
@@ -732,8 +746,8 @@ def contest_submit(
             f"({target.problem.problem_id}) -> [bold]{submission.record_id}[/bold]"
         )
         if watch:
-            detail = _watch_record(client, submission.record_id)
-            _print_record_detail(detail)
+            detail = _watch_record(client, submission.record_id, strict=config.strict_submit)
+            _print_record_detail(detail, strict=config.strict_submit)
         else:
             console.print(
                 f"Use [bold]hydro contest record watch {submission.record_id}[/bold] "
@@ -767,8 +781,8 @@ def contest_submit_answer(
             f"({target.problem.problem_id}) -> [bold]{submission.record_id}[/bold]"
         )
         if watch:
-            detail = _watch_record(client, submission.record_id)
-            _print_record_detail(detail)
+            detail = _watch_record(client, submission.record_id, strict=config.strict_submit)
+            _print_record_detail(detail, strict=config.strict_submit)
         else:
             console.print(
                 f"Use [bold]hydro contest record watch {submission.record_id}[/bold] "
@@ -826,10 +840,11 @@ def contest_record_list(
 def contest_record_show(
     rid: Annotated[str, typer.Argument(help="Record id")],
 ) -> None:
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
         detail = RecordService(client).show(rid)
-    _print_record_detail(detail)
+    _print_record_detail(detail, strict=config.strict_submit)
 
 
 @contest_record_app.command("watch")
@@ -838,10 +853,17 @@ def contest_record_watch(
     interval: Annotated[float, typer.Option("--interval", min=0.5, help="Polling interval.")] = 1.5,
     max_wait: Annotated[float, typer.Option("--max-wait", help="Maximum wait seconds.")] = 120.0,
 ) -> None:
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
-        detail = _watch_record(client, rid, interval=interval, max_wait=max_wait)
-    _print_record_detail(detail)
+        detail = _watch_record(
+            client,
+            rid,
+            interval=interval,
+            max_wait=max_wait,
+            strict=config.strict_submit,
+        )
+    _print_record_detail(detail, strict=config.strict_submit)
 
 
 def _record_list_table(records: list[RecordSummary], title: str = "") -> Table:
@@ -864,10 +886,11 @@ def _record_list_table(records: list[RecordSummary], title: str = "") -> Table:
 
 @record_app.command("show")
 def record_show(rid: Annotated[str, typer.Argument(help="Record id")]) -> None:
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
         detail = RecordService(client).show(rid)
-    _print_record_detail(detail)
+    _print_record_detail(detail, strict=config.strict_submit)
 
 
 @record_app.command("watch")
@@ -876,10 +899,17 @@ def record_watch(
     interval: Annotated[float, typer.Option("--interval", min=0.5, help="Polling interval.")] = 1.5,
     max_wait: Annotated[float, typer.Option("--max-wait", help="Maximum wait seconds.")] = 120.0,
 ) -> None:
-    _store, client = _load_client()
+    store, client = _load_client()
+    config = store.load()
     with client:
-        detail = _watch_record(client, rid, interval=interval, max_wait=max_wait)
-    _print_record_detail(detail)
+        detail = _watch_record(
+            client,
+            rid,
+            interval=interval,
+            max_wait=max_wait,
+            strict=config.strict_submit,
+        )
+    _print_record_detail(detail, strict=config.strict_submit)
 
 
 def _watch_record(
@@ -887,6 +917,7 @@ def _watch_record(
     rid: str,
     interval: float = 1.5,
     max_wait: float = 120.0,
+    strict: bool = False,
 ) -> RecordDetail:
     service = RecordService(client)
     with Live(console=console, auto_refresh=False, refresh_per_second=1, transient=True) as live:
@@ -894,9 +925,9 @@ def _watch_record(
         detail = service.show(rid)
         last_signature = ""
         while True:
-            signature = _record_live_signature(detail)
+            signature = _record_live_signature(detail, strict=strict)
             if signature != last_signature:
-                live.update(_record_live_view(detail), refresh=True)
+                live.update(_record_live_view(detail, strict=strict), refresh=True)
                 last_signature = signature
             if detail.is_done or time.monotonic() >= deadline:
                 return detail
@@ -912,25 +943,26 @@ def _record_panel(detail: RecordDetail) -> Panel:
     )
 
 
-def _record_live_view(detail: RecordDetail) -> Group:
+def _record_live_view(detail: RecordDetail, strict: bool = False) -> Group:
     parts = [_record_panel(detail)]
     info_table = _record_info_table(detail)
     if info_table:
         parts.append(info_table)
     if detail.cases:
-        parts.append(_record_cases_table(detail, limit=18, final=False))
+        parts.append(_record_cases_table(detail, limit=18, final=False, strict=strict))
     if detail.compiler_text and detail.status == "Compile Error":
         parts.append(Panel(_truncate(detail.compiler_text, 1200), title="Compiler"))
     return Group(*parts)
 
 
-def _record_live_signature(detail: RecordDetail) -> str:
+def _record_live_signature(detail: RecordDetail, strict: bool = False) -> str:
+    case_rows = _build_case_rows(detail.cases, final=False, strict=True) if strict else detail.cases
     return repr(
         (
             detail.status,
             detail.score,
             tuple(detail.info.items()),
-            tuple(tuple(item.items()) for item in detail.cases),
+            tuple(tuple(item.items()) for item in case_rows),
             detail.compiler_text if detail.status == "Compile Error" else "",
         )
     )
@@ -947,6 +979,15 @@ def _current_contest_id(config: Config, explicit_cid: str | None) -> str:
 def _save_current_contest(store: ConfigStore, config: Config, cid: str) -> None:
     config.current_contest_id = cid
     store.save(config)
+
+
+def _parse_on_off(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on", "enable", "enabled"}:
+        return True
+    if normalized in {"0", "false", "no", "off", "disable", "disabled"}:
+        return False
+    raise HydroCliError("mode must be on or off")
 
 
 def _resolve_contest_submit_args(
@@ -1002,13 +1043,13 @@ def _print_contest_standings(standing: ContestStanding) -> None:
     console.print(table)
 
 
-def _print_record_detail(detail: RecordDetail) -> None:
+def _print_record_detail(detail: RecordDetail, strict: bool = False) -> None:
     console.print(_record_panel(detail))
     info_table = _record_info_table(detail)
     if info_table:
         console.print(info_table)
     if detail.cases:
-        console.print(_record_cases_table(detail, limit=0, final=True))
+        console.print(_record_cases_table(detail, limit=0, final=True, strict=strict))
     if detail.compiler_text:
         console.print(Panel(detail.compiler_text, title="Compiler"))
 
@@ -1044,8 +1085,8 @@ def _record_info_table(detail: RecordDetail) -> Table | None:
     return table if added else None
 
 
-def _record_cases_table(detail: RecordDetail, limit: int, final: bool) -> Table:
-    rows = _build_case_rows(detail.cases, final=final)
+def _record_cases_table(detail: RecordDetail, limit: int, final: bool, strict: bool = False) -> Table:
+    rows = _build_case_rows(detail.cases, final=final, strict=strict)
     if limit > 0 and len(rows) > limit:
         head = max(1, limit // 2)
         tail = max(1, limit - head - 1)
@@ -1054,21 +1095,30 @@ def _record_cases_table(detail: RecordDetail, limit: int, final: bool) -> Table:
             + [{"subtask": "...", "case": "...", "status": "...", "score": "", "time": "", "memory": "", "message": ""}]
             + rows[-tail:]
         )
-    table = Table("Subtask", "ID", "Status", "Score", "Time", "Memory", "Message", title="Details")
+    columns = ["Subtask", "ID", "Status", "Score", "Time", "Memory"]
+    if not strict:
+        columns.append("Message")
+    table = Table(*columns, title="Details")
     for item in rows:
-        table.add_row(
+        values = [
             item.get("subtask", ""),
             item.get("case", ""),
             item.get("status", ""),
             item.get("score", ""),
             item.get("time", ""),
             item.get("memory", ""),
-            _truncate(item.get("message", ""), 80),
-        )
+        ]
+        if not strict:
+            values.append(_truncate(item.get("message", ""), 80))
+        table.add_row(*values)
     return table
 
 
-def _build_case_rows(cases: list[dict[str, str]], final: bool) -> list[dict[str, str]]:
+def _build_case_rows(
+    cases: list[dict[str, str]],
+    final: bool,
+    strict: bool = False,
+) -> list[dict[str, str]]:
     groups: list[dict[str, object]] = []
     current: dict[str, object] | None = None
     for item in cases:
@@ -1099,28 +1149,34 @@ def _build_case_rows(cases: list[dict[str, str]], final: bool) -> list[dict[str,
         children = group["children"]
         assert isinstance(summary, dict)
         assert isinstance(children, list)
-        rows.append(_format_case_row(summary, subtask=_case_key(summary), is_child=False))
+        rows.append(_format_case_row(summary, subtask=_case_key(summary), is_child=False, strict=strict))
         if final and _case_passed(summary):
             continue
         for child in children:
             if final and _case_cancelled(child):
                 continue
-            rows.append(_format_case_row(child, subtask="", is_child=True))
+            rows.append(_format_case_row(child, subtask="", is_child=True, strict=strict))
     return rows
 
 
-def _format_case_row(item: dict[str, str], subtask: str, is_child: bool) -> dict[str, str]:
+def _format_case_row(
+    item: dict[str, str],
+    subtask: str,
+    is_child: bool,
+    strict: bool = False,
+) -> dict[str, str]:
     case_id = item.get("case", "")
     if is_child:
         case_id = f"  {case_id}"
+    status = item.get("status", "")
     return {
         "subtask": subtask,
         "case": case_id,
-        "status": item.get("status", ""),
+        "status": _strict_case_status(status) if strict else status,
         "score": item.get("score", ""),
         "time": item.get("time", ""),
         "memory": item.get("memory", ""),
-        "message": item.get("message", ""),
+        "message": "" if strict else item.get("message", ""),
     }
 
 
@@ -1145,6 +1201,13 @@ def _case_passed(item: dict[str, str]) -> bool:
 
 def _case_cancelled(item: dict[str, str]) -> bool:
     return item.get("status") in {"Canceled", "Cancelled"}
+
+
+def _strict_case_status(status: str) -> str:
+    for hint in sorted(TERMINAL_STATUS_HINTS | RUNNING_STATUS_HINTS, key=len, reverse=True):
+        if status == hint or status.startswith(f"{hint} "):
+            return hint
+    return status
 
 
 def _truncate(value: str, limit: int) -> str:
