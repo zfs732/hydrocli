@@ -228,6 +228,16 @@ class ContestService:
         record_id = SubmitService(self.client).submit_to_path(target.submit_path, source_path, lang)
         return ContestSubmission(record_id=record_id, target=target)
 
+    def submit_answer(
+        self,
+        cid: str,
+        problem_arg: str,
+        zip_path: Path,
+    ) -> ContestSubmission:
+        target = self.submit_target(cid, problem_arg)
+        record_id = SubmitService(self.client).submit_answer_to_path(target.submit_path, zip_path)
+        return ContestSubmission(record_id=record_id, target=target)
+
 
 def parse_contest_list(html: str, base_url: str) -> list[ContestSummary]:
     soup = BeautifulSoup(html, "html.parser")

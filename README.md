@@ -9,7 +9,7 @@ This repository is currently in the first implementation pass. The initial targe
 - inspect the current login state
 - fetch problem metadata and original Markdown statements
 - pull problem bundles into a local workspace
-- submit code and inspect records
+- submit code or answer zip packages and inspect records
 
 ## Development
 
@@ -50,6 +50,7 @@ hydro problem show 18
 hydro problem pull 18
 hydro problem pull-all --skip-existing
 hydro submit P1000 main.cpp --lang cc.cc20o2 --watch
+hydro submit-answer P1000 answer.zip --watch
 hydro record list
 hydro record show <rid>
 hydro contest list
@@ -60,6 +61,7 @@ hydro contest problem A
 hydro contest pull A
 hydro contest pull-all
 hydro contest submit A main.cpp --lang cc.cc20o2 --watch
+hydro contest submit-answer A answer.zip --watch
 hydro contest record list
 hydro contest record show <rid>
 ```
@@ -98,9 +100,11 @@ Contest support follows the Hydro v5 routes observed on the local instance:
 - contest list and details: `/contest`, `/contest/<cid>`
 - contest problem list: `/contest/<cid>/problems`
 - contest problem detail and submit links: `/p/<pid>?tid=<cid>`, `/p/<pid>/submit?tid=<cid>`
+- contest source submit uses multipart `lang` and `code`; answer-only zip submit uses
+  `lang=_`, empty `code`, and binary `file`
 - contest join: `POST /contest/<cid>` with `operation=attend`, plus `code` when an invitation code is required
 - contest self records: the `Submissions` table on `/contest/<cid>/problems`
 - contest record detail: `/record/<rid>`
 - contest standings: `/contest/<cid>/scoreboard` when the contest rule makes it visible
 
-Run `hydro contest use <cid>` to save a current contest in the local config. Contest commands still accept an explicit `<cid>`, but `show`, `problems`, `standings`, `record`, and the short submit form `hydro contest submit A main.cpp` use the saved contest when it is omitted.
+Run `hydro contest use <cid>` to save a current contest in the local config. Contest commands still accept an explicit `<cid>`, but `show`, `problems`, `standings`, `record`, and the short submit forms `hydro contest submit A main.cpp` and `hydro contest submit-answer A answer.zip` use the saved contest when it is omitted.

@@ -151,10 +151,17 @@ Submit a normal, non-contest problem:
 hydro submit <pid> main.cpp --lang cc.cc20o2
 ```
 
+Submit an answer-only problem with a zip package:
+
+```bash
+hydro submit-answer <pid> answer.zip
+```
+
 Submissions watch the record by default. Use `--no-watch` when you only want the record id:
 
 ```bash
 hydro submit <pid> main.cpp --lang cc.cc20o2 --no-watch
+hydro submit-answer <pid> answer.zip --no-watch
 ```
 
 ## Contest Workflow
@@ -244,12 +251,14 @@ After setting a current contest, submit by contest alias:
 
 ```bash
 hydro contest submit A main.cpp --lang cc.cc20o2
+hydro contest submit-answer A answer.zip
 ```
 
 The old explicit form also works:
 
 ```bash
 hydro contest submit <cid> A main.cpp --lang cc.cc20o2
+hydro contest submit-answer <cid> A answer.zip
 ```
 
 The problem argument can be either the contest alias, such as `A`, `B`, `C`, or the real Hydro problem id when it is visible:
@@ -257,12 +266,15 @@ The problem argument can be either the contest alias, such as `A`, `B`, `C`, or 
 ```bash
 hydro contest submit A main.cpp --lang cc.cc20o2
 hydro contest submit 16 main.cpp --lang cc.cc20o2
+hydro contest submit-answer A answer.zip
+hydro contest submit-answer 16 answer.zip
 ```
 
 Like normal submissions, contest submissions watch the returned record by default. Use `--no-watch` if you want to submit and continue working immediately:
 
 ```bash
 hydro contest submit A main.cpp --lang cc.cc20o2 --no-watch
+hydro contest submit-answer A answer.zip --no-watch
 ```
 
 Inspect contest submissions through the saved current contest:
@@ -329,6 +341,7 @@ During a contest, prefer the short submit form:
 
 ```bash
 hydro contest submit A main.cpp --lang cc.cc20o2
+hydro contest submit-answer A answer.zip
 ```
 
 After a contest or when switching contests, update the saved current contest:

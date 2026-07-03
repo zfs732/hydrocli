@@ -54,11 +54,36 @@ class SubmitService:
             },
             follow_redirects=False,
         )
-        location = response.headers.get("location", "")
-        match = re.search(r"/record/([^/?#]+)", location or response.text)
-        if not match:
-            raise HydroCliError("submission did not return a record id")
-        return match.group(1)
+        return _record_id_from_response(response)
+
+    def submit_answer(self, pid: str, zip_path: Path) -> str:
+        return self.submit_answer_to_path(f"/p/{quote_path_part(pid)}/submit", zip_path)
+
+    def submit_answer_to_path(self, submit_path: str, zip_path: Path) -> str:
+        if zip_path.suffix.lower() != ".zip":
+            raise HydroCliError("answer file must be a .zip file")
+        with zip_path.open("rb") as answer_file:
+            response = self.client.raw_request(
+                "POST",
+                submit_path,
+                files={
+                    "lang": (None, "_"),
+                    "code": (None, ""),
+                    "file": (zip_path.name, answer_file, "application/zip"),
+                },
+                follow_redirects=False,
+            )
+        return _record_id_from_response(response)
+
+
+def _record_id_from_response(response: object) -> str:
+    headers = getattr(response, "headers", {})
+    text = str(getattr(response, "text", ""))
+    location = headers.get("location", "") if hasattr(headers, "get") else ""
+    match = re.search(r"/record/([^/?#]+)", location or text)
+    if not match:
+        raise HydroCliError("submission did not return a record id")
+    return match.group(1)
 
 
 def infer_language(source_path: Path) -> str:

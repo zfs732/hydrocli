@@ -104,6 +104,33 @@ class RecordingContestService:
         )
         return ContestSubmission(record_id="r1", target=target)
 
+    def submit_answer(
+        self,
+        cid: str,
+        problem_arg: str,
+        answer_path: Path,
+    ) -> ContestSubmission:
+        self.calls.append(("submit_answer", cid, problem_arg, answer_path))
+        contest_problem = ContestProblem(
+            alias=problem_arg,
+            problem_id="16",
+            title="Matrix",
+            status="",
+            score="",
+            last_submit_at="",
+            url="http://localhost:8888/p/16?tid=abc123",
+            submit_url="http://localhost:8888/p/16/submit?tid=abc123",
+        )
+        target = ContestSubmitTarget(
+            contest_id=cid,
+            problem=contest_problem,
+            submit_path="/p/16/submit?tid=abc123",
+            submit_url="http://localhost:8888/p/16/submit?tid=abc123",
+            record_detail_path="",
+            languages=[],
+        )
+        return ContestSubmission(record_id="r1", target=target)
+
 
 class RecordingRecordService:
     def __init__(self) -> None:
@@ -246,6 +273,21 @@ def test_cli_contest_submit_uses_current_contest(monkeypatch, tmp_path) -> None:
 
     assert result.exit_code == 0
     assert service.calls == [("submit", "abc123", "A", source, "cc.cc20o2")]
+
+
+def test_cli_contest_submit_answer_uses_current_contest(monkeypatch, tmp_path) -> None:
+    service = RecordingContestService()
+    answer = tmp_path / "answer.zip"
+    answer.write_bytes(b"PK\x03\x04answer")
+    _install_fake_contest(monkeypatch, tmp_path, service)
+
+    result = CliRunner().invoke(
+        app,
+        ["contest", "submit-answer", "A", str(answer), "--no-watch"],
+    )
+
+    assert result.exit_code == 0
+    assert service.calls == [("submit_answer", "abc123", "A", answer)]
 
 
 def test_cli_contest_record_list_uses_current_contest(monkeypatch, tmp_path) -> None:

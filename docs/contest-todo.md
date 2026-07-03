@@ -19,6 +19,8 @@ hydro contest pull <alias-or-pid> [cid] [--output-dir contests]
 hydro contest pull-all [cid] [--output-dir contests]
 hydro contest submit <alias-or-pid> <file> [--lang ...] [--watch/--no-watch]
 hydro contest submit <cid> <alias-or-pid> <file> [--lang ...] [--watch/--no-watch]
+hydro contest submit-answer <alias-or-pid> <zip> [--watch/--no-watch]
+hydro contest submit-answer <cid> <alias-or-pid> <zip> [--watch/--no-watch]
 hydro contest record list [cid] [--user ...]
 hydro contest record show <rid>
 hydro contest record watch <rid> [--interval ...] [--max-wait ...]
@@ -60,7 +62,9 @@ Observed on local Hydro v5.0.1:
 - Contest problem list: `GET /contest/<cid>/problems`
 - Contest problem detail: `GET /p/<pid>?tid=<cid>`
 - Contest problem submit page: `GET /p/<pid>/submit?tid=<cid>`
-- Contest problem submit action: `POST /p/<pid>/submit?tid=<cid>` with multipart fields `lang` and `code`.
+- Contest problem submit action: `POST /p/<pid>/submit?tid=<cid>` with multipart fields
+  `lang` and `code` for source submissions, or `lang=_`, empty `code`, and binary
+  `file` for answer-only zip submissions.
 - Contest attachment download: `GET /p/<pid>/file/<name>?type=additional_file&tid=<cid>`
 - Contest self record list: `GET /contest/<cid>/problems`, parse the `Submissions` table.
 - Contest record list for explicit `--user`: `GET /record?tid=<cid>&uidOrName=...` when Hydro's scoreboard visibility permits it.
@@ -97,6 +101,8 @@ hydro contest pull A --output-dir "$(mktemp -d)"
 hydro contest pull-all --output-dir "$(mktemp -d)"
 hydro contest submit A /tmp/solution.cpp --lang cc.cc20o2 --no-watch
 hydro contest submit <cid> A /tmp/solution.cpp --lang cc.cc20o2 --no-watch
+hydro contest submit-answer A /tmp/answer.zip --no-watch
+hydro contest submit-answer <cid> A /tmp/answer.zip --no-watch
 hydro contest record list
 hydro contest record show <rid>
 hydro contest record watch <rid> --max-wait 5

@@ -117,6 +117,15 @@ class FakeProgress:
         return None
 
 
+class RecordingSubmitService:
+    def __init__(self) -> None:
+        self.calls: list[tuple[object, ...]] = []
+
+    def submit_answer(self, pid: str, answer_path: Path) -> str:
+        self.calls.append(("submit_answer", pid, answer_path))
+        return "r1"
+
+
 def _page(*pids: str, total_pages: int | None = None) -> ProblemListPage:
     return ProblemListPage(
         problems=[
@@ -231,6 +240,23 @@ def test_pull_problem_with_retries_handles_hydro_403_rate_limit(tmp_path: Path, 
 
     assert item.status == "pulled"
     assert RecordingProblemService.pull_calls == ["1001", "1001"]
+
+
+def test_cli_submit_answer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    answer_path = tmp_path / "answer.zip"
+    answer_path.write_bytes(b"PK\x03\x04answer")
+    service = RecordingSubmitService()
+    monkeypatch.setenv("HYDRO_CLI_CONFIG_DIR", str(tmp_path / "config"))
+    store = ConfigStore()
+    store.save(Config(base_url="http://localhost:8888"))
+    monkeypatch.setattr(cli_module, "_load_client", lambda: (store, FakeClient(Config())))
+    monkeypatch.setattr(cli_module, "SubmitService", lambda _client: service)
+
+    result = CliRunner().invoke(app, ["submit-answer", "P1000", str(answer_path), "--no-watch"])
+
+    assert result.exit_code == 0
+    assert service.calls == [("submit_answer", "P1000", answer_path)]
+    assert "Submitted answer" in result.stdout
 
 
 def test_pull_problem_ids_continues_after_failure(no_progress: None, tmp_path: Path, monkeypatch) -> None:

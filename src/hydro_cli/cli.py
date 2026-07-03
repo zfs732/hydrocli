@@ -515,6 +515,27 @@ def submit(
             console.print(f"Use [bold]hydro record watch {rid}[/bold] to wait for the result.")
 
 
+@app.command("submit-answer")
+def submit_answer(
+    pid: Annotated[str, typer.Argument(help="Problem id")],
+    answer: Annotated[Path, typer.Argument(help="Answer .zip file to submit")],
+    watch: Annotated[bool, typer.Option("--watch/--no-watch", help="Wait for final result.")] = True,
+) -> None:
+    if not answer.exists():
+        raise HydroCliError(f"answer file not found: {answer}")
+    if answer.suffix.lower() != ".zip":
+        raise HydroCliError("answer file must be a .zip file")
+    _store, client = _load_client()
+    with client:
+        rid = SubmitService(client).submit_answer(pid, answer)
+        console.print(f"Submitted answer [bold]{pid}[/bold] -> [bold]{rid}[/bold]")
+        if watch:
+            detail = _watch_record(client, rid)
+            _print_record_detail(detail)
+        else:
+            console.print(f"Use [bold]hydro record watch {rid}[/bold] to wait for the result.")
+
+
 @problem_app.command("langs")
 def problem_langs(pid: Annotated[str, typer.Argument(help="Problem id")]) -> None:
     _store, client = _load_client()
@@ -708,6 +729,41 @@ def contest_submit(
         label = target.problem.alias or target.problem.problem_id
         console.print(
             f"Submitted [bold]{cid}[/bold] [bold]{label}[/bold] "
+            f"({target.problem.problem_id}) -> [bold]{submission.record_id}[/bold]"
+        )
+        if watch:
+            detail = _watch_record(client, submission.record_id)
+            _print_record_detail(detail)
+        else:
+            console.print(
+                f"Use [bold]hydro contest record watch {submission.record_id}[/bold] "
+                "to wait for the result."
+            )
+
+
+@contest_app.command("submit-answer")
+def contest_submit_answer(
+    first: Annotated[str, typer.Argument(help="Problem alias, or contest id in legacy form.")],
+    second: Annotated[str, typer.Argument(help="Answer .zip file, or problem alias in legacy form.")],
+    third: Annotated[
+        Path | None,
+        typer.Argument(help="Answer .zip file in legacy form: <cid> <problem> <file>."),
+    ] = None,
+    watch: Annotated[bool, typer.Option("--watch/--no-watch", help="Wait for final result.")] = True,
+) -> None:
+    store, client = _load_client()
+    config = store.load()
+    cid, problem, answer = _resolve_contest_submit_args(config, first, second, third)
+    if not answer.exists():
+        raise HydroCliError(f"answer file not found: {answer}")
+    if answer.suffix.lower() != ".zip":
+        raise HydroCliError("answer file must be a .zip file")
+    with client:
+        submission = ContestService(client).submit_answer(cid, problem, answer)
+        target = submission.target
+        label = target.problem.alias or target.problem.problem_id
+        console.print(
+            f"Submitted answer [bold]{cid}[/bold] [bold]{label}[/bold] "
             f"({target.problem.problem_id}) -> [bold]{submission.record_id}[/bold]"
         )
         if watch:
