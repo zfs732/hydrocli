@@ -170,6 +170,35 @@ def test_parse_contest_problem_table_with_aliases() -> None:
     assert resolve_contest_problem(problems, "16").alias == "A"
 
 
+def test_parse_contest_problem_status_cell_with_score() -> None:
+    for score, status in [("100", "Accepted"), ("50.5", "Wrong Answer"), ("0", "Wrong Answer")]:
+        html = f"""
+        <table class="data-table">
+          <thead><tr><th>Status</th><th>Last Submit At</th><th>Problem</th></tr></thead>
+          <tbody><tr>
+            <td class="col--status record-status--border fail">
+              <div class="col--status__text">
+                <span class="icon record-status--icon fail"></span>
+                <a class="record-status--text fail" href="/record/abc456">
+                  <span style="color: #f7bb3b">{score}</span>
+                  {status}
+                </a>
+              </div>
+            </td>
+            <td class="col--submit-at">2026-10-13 21:09:37</td>
+            <td><a href="/p/P1000?tid=abc123"><b>A</b> A+B Problem</a></td>
+          </tr></tbody>
+        </table>
+        """
+
+        problems = parse_contest_problems(html, "http://localhost:8888", "abc123")
+
+        assert len(problems) == 1
+        assert problems[0].score == score
+        assert problems[0].status == status
+        assert problems[0].last_submit_at == "2026-10-13 21:09:37"
+
+
 def test_parse_contest_standings_table() -> None:
     html = """
     <table class="data-table">

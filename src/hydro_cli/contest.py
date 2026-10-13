@@ -395,8 +395,15 @@ def parse_contest_problems(html: str, base_url: str, cid: str) -> list[ContestPr
         title = _problem_title(problem_link, alias, problem_id)
         cell_by_header = _row_cells_by_header(row)
         cells = row.find_all("td")
-        status = _cell_text(cell_by_header.get("status")) or (_cell_text(cells[0]) if cells else "")
+        status_cell = cell_by_header.get("status") or (cells[0] if cells else None)
+        status = _cell_text(status_cell)
         score = _cell_text(cell_by_header.get("score"))
+        status_link = status_cell.select_one(".record-status--text") if status_cell else None
+        if status_link:
+            combined = re.fullmatch(r"(\d+(?:\.\d+)?)\s+(.+)", _cell_text(status_link))
+            if combined:
+                score = score or combined.group(1)
+                status = combined.group(2)
         last_submit_at = (
             _cell_text(cell_by_header.get("last submit at"))
             or _cell_text(cell_by_header.get("submit at"))
