@@ -39,5 +39,9 @@ packages = ["src/hydro_cli"]
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+# Keep the project's original rule set explicit across Ruff default changes.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
