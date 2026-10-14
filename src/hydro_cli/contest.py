@@ -321,7 +321,7 @@ def parse_contest_detail(html: str, base_url: str, cid: str) -> ContestDetail:
     soup = BeautifulSoup(html, "html.parser")
     ui = _safe_ui_context(html)
     tdoc = ui.get("tdoc") if isinstance(ui.get("tdoc"), dict) else {}
-    tsdoc = ui.get("tsdoc") if isinstance(ui.get("tsdoc"), dict) else {}
+    tsdoc = (ui.get("tsdoc") or {}) if "tsdoc" in ui else None
     info = _parse_info_dl(soup)
 
     contest_id = str(tdoc.get("_id") or tdoc.get("docId") or cid)
@@ -702,8 +702,10 @@ def _rule_name(rule: str) -> str:
 
 
 def _is_attended(tsdoc: object, soup: BeautifulSoup) -> bool:
-    if isinstance(tsdoc, dict) and tsdoc.get("attend"):
-        return True
+    if isinstance(tsdoc, dict):
+        return bool(tsdoc.get("attend"))
+    if soup.select_one('form [name="operation"][value="attend"]'):
+        return False
     text = clean_text(soup.get_text(" ", strip=True)).lower()
     return "attended" in text and "not attended" not in text
 

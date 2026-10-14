@@ -138,6 +138,54 @@ def test_parse_contest_detail_from_context_and_sidebar() -> None:
     assert [item.problem_id for item in detail.problems] == ["16", "17"]
 
 
+def test_unjoined_context_overrides_attendance_words_in_page() -> None:
+    for tsdoc in (None, {}, {"attend": 0}):
+        html = "<p>You haven't attended this contest.</p>" + encode_context(
+            {"tdoc": {"_id": "abc123"}, "tsdoc": tsdoc}
+        )
+        detail = parse_contest_detail(html, "http://localhost:8888", "abc123")
+        assert not detail.attended
+
+
+def test_join_form_overrides_flexible_contest_instructions_without_context() -> None:
+    html = """
+    <p>Complete this contest within a specified time after you attended.</p>
+    <form method="post"><input name="operation" value="attend"></form>
+    """
+    detail = parse_contest_detail(html, "http://localhost:8888", "abc123")
+    assert not detail.attended
+
+
+def test_attendance_markup_fallback_without_status_context() -> None:
+    detail = parse_contest_detail(
+        "<p>Attended</p>", "http://localhost:8888", "abc123"
+    )
+    assert detail.attended
+
+
+def test_join_posts_when_context_says_unjoined() -> None:
+    class JoinClient(FakeClient):
+        def __init__(self) -> None:
+            super().__init__({})
+            self.attend = False
+            self.requests: list[tuple[str, str, dict[str, str]]] = []
+
+        def get_text(self, path: str, **_kwargs: object) -> str:
+            self.paths.append(path)
+            return "<p>You haven't attended this contest.</p>" + encode_context(
+                {"tdoc": {"_id": "abc123"}, "tsdoc": {"attend": int(self.attend)}}
+            )
+
+        def raw_request(self, method: str, path: str, **kwargs: object) -> None:
+            self.requests.append((method, path, kwargs["data"]))
+            self.attend = True
+
+    client = JoinClient()
+    detail = ContestService(client).join("abc123")
+    assert detail.attended
+    assert client.requests == [("POST", "/contest/abc123", {"operation": "attend"})]
+
+
 def test_parse_contest_problem_table_with_aliases() -> None:
     html = """
     <table class="data-table">
